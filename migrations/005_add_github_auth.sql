@@ -1,0 +1,3 @@
+ALTER TABLE users
+    ADD COLUMN github_id BIGINT NOT NULL UNIQUE,
+    ADD COLUMN github_username VARCHAR(255) NOT NULL;
