@@ -1,0 +1,14 @@
+FROM rust:slim AS builder
+WORKDIR /app
+RUN apt-get update && apt-get install -y pkg-config libssl-dev && rm -rf /var/lib/apt/lists/*
+COPY Cargo.toml Cargo.lock* ./
+COPY crates/ crates/
+COPY migrations/ migrations/
+RUN cargo build --release -p vex-server
+
+FROM debian:bookworm-slim
+RUN apt-get update && apt-get install -y ca-certificates && rm -rf /var/lib/apt/lists/*
+COPY --from=builder /app/target/release/vex-server /usr/local/bin/vex-server
+COPY migrations/ /app/migrations/
+WORKDIR /app
+CMD ["vex-server"]
