@@ -1,0 +1,12 @@
+[server]
+listen_addr = "0.0.0.0:3000"
+proxy_listen_addr = "0.0.0.0:8080"
+domain = "vex.dev"
+
+[database]
+url = "postgres://vex:vex@localhost:5432/vex"
+
+[tls]
+enabled = false
+# acme_email = "admin@example.com"
+# cert_dir = "/var/lib/vex/certs"
