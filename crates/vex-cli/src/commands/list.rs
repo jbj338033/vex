@@ -15,10 +15,14 @@ impl TextDisplay for Vec<AppResponse> {
 
         let max_name = self.iter().map(|a| a.name.len()).max().unwrap_or(4).max(4);
 
-        writeln!(w, "  {:<max_name$}  ID", "NAME")?;
+        writeln!(w, "  {:<max_name$}  CREATED", "NAME")?;
         for app in self {
-            let short_id = &app.id[..12];
-            writeln!(w, "  {:<max_name$}  {short_id}..", app.name)?;
+            let created = app
+                .created_at
+                .get(..16)
+                .unwrap_or(&app.created_at)
+                .replace('T', " ");
+            writeln!(w, "  {:<max_name$}  {created}", app.name)?;
         }
         Ok(())
     }

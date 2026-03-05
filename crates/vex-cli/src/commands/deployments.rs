@@ -5,7 +5,7 @@ use vex_core::schema::{ApiResponse, DeploymentResponse};
 
 use crate::client::Client;
 use crate::config;
-use crate::output::{self, Format, TextDisplay, status_text};
+use crate::output::{self, Format, TextDisplay, status_dot};
 
 impl TextDisplay for Vec<DeploymentResponse> {
     fn fmt_text(&self, w: &mut dyn Write) -> std::io::Result<()> {
@@ -13,14 +13,19 @@ impl TextDisplay for Vec<DeploymentResponse> {
             return writeln!(w, "  No deployments found");
         }
 
-        writeln!(w, "  {:<14}  {:<20}  ID", "STATUS", "CREATED")?;
+        writeln!(w, "  {:<12}  {:<20}  ID", "STATUS", "CREATED")?;
         for d in self {
             let short_id = &d.id[..12];
-            let created = d.created_at.get(..16).unwrap_or(&d.created_at);
+            let created = d
+                .created_at
+                .get(..16)
+                .unwrap_or(&d.created_at)
+                .replace('T', " ");
             writeln!(
                 w,
-                "  {:<14}  {:<20}  {short_id}..",
-                status_text(d.status),
+                "  {} {:<10}  {:<20}  {short_id}..",
+                status_dot(d.status),
+                d.status,
                 created,
             )?;
         }
