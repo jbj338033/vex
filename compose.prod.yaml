@@ -1,0 +1,40 @@
+services:
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: vex
+      POSTGRES_PASSWORD: jhj1601jmo!
+      POSTGRES_DB: vex
+    volumes:
+      - ./postgres/data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U vex"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  server:
+    image: ghcr.io/jbj338033/vex:latest
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgres://vex:jhj1601jmo!@postgres:5432/vex
+      VEX_LISTEN_ADDR: "0.0.0.0:3000"
+      VEX_PROXY_LISTEN_ADDR: "0.0.0.0:443"
+      VEX_DOMAIN: proxia.kr
+      VEX_TLS_ENABLED: "true"
+      VEX_ACME_EMAIL: jbj338033@gmail.com
+      VEX_CERT_DIR: /data/certs
+      GITHUB_CLIENT_ID: Ov23li9vfRcOMLFv1Nvr
+      GITHUB_CLIENT_SECRET: b1db69dea307d758fde1b659a3bb579a2e7eefe1
+      RUST_LOG: vex_server=info
+    ports:
+      - "443:443"
+      - "80:80"
+      - "3000:3000"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./certs/data:/data/certs
+    depends_on:
+      postgres:
+        condition: service_healthy
