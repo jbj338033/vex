@@ -22,7 +22,7 @@ pub struct Cli {
 #[derive(Subcommand)]
 pub enum Command {
     Login {
-        #[arg(long, default_value = "http://localhost:3000")]
+        #[arg(long, default_value_t = default_api_url())]
         url: String,
     },
     Deploy {
@@ -68,6 +68,14 @@ pub enum EnvCommand {
         #[arg(required = true, num_args = 1..)]
         keys: Vec<String>,
     },
+}
+
+fn default_api_url() -> String {
+    if cfg!(debug_assertions) {
+        "http://localhost:3000".to_string()
+    } else {
+        "https://api.proxia.kr".to_string()
+    }
 }
 
 pub async fn run(cli: Cli) -> Result<()> {
