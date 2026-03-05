@@ -21,9 +21,11 @@ axum = { version = "0.8", features = ["multipart"] }
 bollard = "0.18"
 clap = { version = "4", features = ["derive"] }
 chrono = { version = "0.4", features = ["serde"] }
+console = "0.15"
 dashmap = "6"
 flate2 = "1"
 open = "5"
+indicatif = "0.17"
 hyper = { version = "1", features = ["full"] }
 hyper-util = { version = "0.1", features = ["tokio", "client-legacy", "http1"] }
 http-body-util = "0.1"

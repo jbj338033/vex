@@ -12,6 +12,8 @@ vex-core = { workspace = true }
 
 anyhow = { workspace = true }
 clap = { workspace = true }
+console = { workspace = true }
+indicatif = { workspace = true }
 flate2 = { workspace = true }
 open = { workspace = true }
 reqwest = { workspace = true, features = ["rustls-tls"] }
