@@ -153,14 +153,14 @@ pub async fn provision_app(
             .context("failed to set challenge ready")?;
     }
 
-    for token in &tokens_to_clean {
-        challenge_store.remove(token);
-    }
-
     order
         .poll_ready(&RetryPolicy::default())
         .await
         .context("order did not become ready")?;
+
+    for token in &tokens_to_clean {
+        challenge_store.remove(token);
+    }
 
     let private_key_pem = order.finalize().await.context("failed to finalize order")?;
 
