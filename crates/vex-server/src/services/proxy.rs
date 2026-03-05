@@ -49,7 +49,12 @@ impl RouteTable {
     }
 }
 
-pub async fn serve(addr: SocketAddr, route_table: RouteTable, tls_acceptor: Option<TlsAcceptor>) {
+pub async fn serve(
+    addr: SocketAddr,
+    route_table: RouteTable,
+    tls_acceptor: Option<TlsAcceptor>,
+    api_port: Option<u16>,
+) {
     let listener = TcpListener::bind(addr)
         .await
         .expect("failed to bind proxy listener");
@@ -89,10 +94,17 @@ pub async fn serve(addr: SocketAddr, route_table: RouteTable, tls_acceptor: Opti
                     hyper_util::rt::TokioIo::new(tls_stream),
                     route_table,
                     client,
+                    api_port,
                 )
                 .await;
             } else {
-                serve_connection(hyper_util::rt::TokioIo::new(stream), route_table, client).await;
+                serve_connection(
+                    hyper_util::rt::TokioIo::new(stream),
+                    route_table,
+                    client,
+                    api_port,
+                )
+                .await;
             }
         });
     }
@@ -102,13 +114,14 @@ async fn serve_connection<I>(
     io: I,
     route_table: RouteTable,
     client: Client<hyper_util::client::legacy::connect::HttpConnector, Incoming>,
+    api_port: Option<u16>,
 ) where
     I: hyper::rt::Read + hyper::rt::Write + Unpin + Send + 'static,
 {
     let svc = service_fn(move |req| {
         let rt = route_table.clone();
         let c = client.clone();
-        async move { handle(req, rt, c).await }
+        async move { handle(req, rt, c, api_port).await }
     });
 
     if let Err(e) = http1::Builder::new()
@@ -125,15 +138,23 @@ async fn handle(
     req: Request<Incoming>,
     route_table: RouteTable,
     client: Client<hyper_util::client::legacy::connect::HttpConnector, Incoming>,
+    api_port: Option<u16>,
 ) -> Result<Response<BoxBody>, Infallible> {
     let app_name = match extract_app_name(req.headers()) {
         Some(name) => name,
         None => return Ok(not_found()),
     };
 
-    let target = match route_table.get(&app_name) {
-        Some(t) => t,
-        None => return Ok(not_found()),
+    let upstream_port = if app_name == "api" {
+        match api_port {
+            Some(port) => port,
+            None => return Ok(not_found()),
+        }
+    } else {
+        match route_table.get(&app_name) {
+            Some(t) => t.host_port,
+            None => return Ok(not_found()),
+        }
     };
 
     let (mut parts, body) = req.into_parts();
@@ -144,7 +165,7 @@ async fn handle(
         .map(|pq| pq.as_str())
         .unwrap_or("/");
 
-    let uri = format!("http://127.0.0.1:{}{path_and_query}", target.host_port);
+    let uri = format!("http://127.0.0.1:{upstream_port}{path_and_query}");
     parts.uri = uri.parse().expect("constructed uri must be valid");
     parts.headers.remove(hyper::header::HOST);
 
