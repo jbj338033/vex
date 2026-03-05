@@ -105,9 +105,17 @@ impl Client {
         self.parse_response(resp).await
     }
 
-    pub async fn stream_logs(&self, app_name: &str) -> Result<reqwest::Response> {
+    pub async fn stream_logs(
+        &self,
+        app_name: &str,
+        deployment_id: Option<&str>,
+    ) -> Result<reqwest::Response> {
+        let mut url = self.url(&format!("/apps/{app_name}/logs/stream"));
+        if let Some(id) = deployment_id {
+            url.push_str(&format!("?deployment_id={id}"));
+        }
         self.http
-            .get(self.url(&format!("/apps/{app_name}/logs/stream")))
+            .get(url)
             .bearer_auth(&self.api_key)
             .send()
             .await

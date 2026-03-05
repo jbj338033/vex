@@ -25,12 +25,18 @@ impl TextDisplay for Vec<LogEntry> {
     }
 }
 
-pub async fn run(app: &str, follow: bool, n: u64, format: Format) -> Result<()> {
+pub async fn run(
+    app: &str,
+    follow: bool,
+    n: u64,
+    deployment_id: Option<&str>,
+    format: Format,
+) -> Result<()> {
     let cfg = config::load()?;
     let client = Client::new(&cfg);
 
     if follow {
-        let response = client.stream_logs(app).await?;
+        let response = client.stream_logs(app, deployment_id).await?;
         let mut stream = response.bytes_stream();
         use tokio_stream::StreamExt;
 
@@ -52,8 +58,11 @@ pub async fn run(app: &str, follow: bool, n: u64, format: Format) -> Result<()> 
             }
         }
     } else {
-        let response: ApiResponse<Vec<LogEntry>> =
-            client.get(&format!("/apps/{app}/logs?n={n}")).await?;
+        let mut path = format!("/apps/{app}/logs?n={n}");
+        if let Some(id) = deployment_id {
+            path.push_str(&format!("&deployment_id={id}"));
+        }
+        let response: ApiResponse<Vec<LogEntry>> = client.get(&path).await?;
         output::print_api(&response, format);
     }
 

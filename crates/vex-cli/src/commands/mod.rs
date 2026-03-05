@@ -47,6 +47,8 @@ pub enum Command {
         follow: bool,
         #[arg(short, long, default_value = "100")]
         n: u64,
+        #[arg(short, long)]
+        deployment: Option<String>,
     },
     #[command(about = "Manage environment variables")]
     Env {
@@ -109,9 +111,14 @@ pub async fn run(cli: Cli) -> Result<()> {
             let app = resolve_app_name(app)?;
             deployments::run(&app, cli.format).await
         }
-        Command::Logs { app, follow, n } => {
+        Command::Logs {
+            app,
+            follow,
+            n,
+            deployment,
+        } => {
             let app = resolve_app_name(app)?;
-            logs::run(&app, follow, n, cli.format).await
+            logs::run(&app, follow, n, deployment.as_deref(), cli.format).await
         }
         Command::Env { command } => env::run(command, cli.format).await,
         Command::Status { app } => {

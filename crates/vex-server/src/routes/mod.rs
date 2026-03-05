@@ -16,6 +16,7 @@ use vex_core::schema::ApiResponse;
 
 use crate::config::Config;
 use crate::middleware::auth_middleware;
+use crate::services::build_logger::{self, BuildLogChannels};
 use crate::services::proxy::RouteTable;
 use crate::services::tls::{CertStore, ChallengeStore};
 
@@ -25,6 +26,7 @@ pub struct AppState {
     pub config: Config,
     pub docker: Docker,
     pub route_table: RouteTable,
+    pub build_log_channels: BuildLogChannels,
     pub challenge_store: Option<ChallengeStore>,
     pub cert_store: Option<CertStore>,
 }
@@ -38,11 +40,13 @@ impl AppState {
     ) -> Self {
         let docker = Docker::connect_with_local_defaults().expect("failed to connect to docker");
         let route_table = RouteTable::new();
+        let build_log_channels = build_logger::new();
         Self {
             pool,
             config,
             docker,
             route_table,
+            build_log_channels,
             challenge_store,
             cert_store,
         }

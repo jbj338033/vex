@@ -1,3 +1,4 @@
+pub mod build_logger;
 pub mod builder;
 pub mod deployer;
 pub mod logger;

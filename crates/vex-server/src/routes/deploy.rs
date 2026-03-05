@@ -8,7 +8,7 @@ use vex_core::schema::{ApiResponse, DeploymentResponse};
 
 use super::{AppError, AppState, fetch_app};
 use crate::services::proxy::RouteTarget;
-use crate::services::{builder, deployer, tls};
+use crate::services::{build_logger, builder, deployer, tls};
 
 pub fn router() -> Router<AppState> {
     Router::new()
@@ -101,7 +101,16 @@ async fn run_deploy_pipeline(
         return;
     }
 
-    if let Err(e) = builder::build_image(&state.docker, build_dir, &image_tag).await {
+    if let Err(e) = builder::build_image(
+        &state.docker,
+        build_dir,
+        &image_tag,
+        &state.pool,
+        deployment_id,
+        &state.build_log_channels,
+    )
+    .await
+    {
         set_status(
             &state.pool,
             deployment_id,
@@ -109,8 +118,11 @@ async fn run_deploy_pipeline(
             Some(e.to_string()),
         )
         .await;
+        build_logger::remove(&state.build_log_channels, deployment_id);
         return;
     }
+
+    build_logger::remove(&state.build_log_channels, deployment_id);
 
     set_status(
         &state.pool,

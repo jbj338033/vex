@@ -68,3 +68,11 @@ pub struct EnvVar {
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct BuildLog {
+    pub id: Uuid,
+    pub deployment_id: Uuid,
+    pub message: String,
+    pub created_at: DateTime<Utc>,
+}

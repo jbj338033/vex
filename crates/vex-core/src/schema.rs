@@ -143,7 +143,7 @@ impl From<EnvVar> for EnvVarResponse {
     }
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LogEntry {
     pub timestamp: String,
     pub message: String,
