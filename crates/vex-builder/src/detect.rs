@@ -24,6 +24,18 @@ pub enum PythonPackageManager {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JvmBuildTool {
+    Gradle,
+    Maven,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JvmLanguage {
+    Java,
+    Kotlin,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ProjectType {
     Dockerfile,
     Node {
@@ -35,6 +47,10 @@ pub enum ProjectType {
     },
     Go,
     Rust,
+    SpringBoot {
+        build_tool: JvmBuildTool,
+        language: JvmLanguage,
+    },
     Static,
 }
 
@@ -57,6 +73,10 @@ pub fn detect(dir: &Path) -> Option<ProjectType> {
 
     if dir.join("Cargo.toml").exists() {
         return Some(ProjectType::Rust);
+    }
+
+    if let Some(spring) = detect_spring_boot(dir) {
+        return Some(spring);
     }
 
     if dir.join("index.html").exists() {
@@ -105,6 +125,27 @@ fn detect_node_framework(dir: &Path) -> NodeFramework {
     }
 
     NodeFramework::Plain
+}
+
+fn detect_spring_boot(dir: &Path) -> Option<ProjectType> {
+    let build_tool = if dir.join("build.gradle.kts").exists() || dir.join("build.gradle").exists() {
+        JvmBuildTool::Gradle
+    } else if dir.join("pom.xml").exists() {
+        JvmBuildTool::Maven
+    } else {
+        return None;
+    };
+
+    let language = if dir.join("src/main/kotlin").exists() {
+        JvmLanguage::Kotlin
+    } else {
+        JvmLanguage::Java
+    };
+
+    Some(ProjectType::SpringBoot {
+        build_tool,
+        language,
+    })
 }
 
 fn detect_python(dir: &Path) -> ProjectType {
@@ -231,6 +272,48 @@ mod tests {
         let dir = setup();
         fs::write(dir.path().join("index.html"), "<html>").unwrap();
         assert_eq!(detect(dir.path()), Some(ProjectType::Static));
+    }
+
+    #[test]
+    fn detects_spring_boot_gradle_kotlin() {
+        let dir = setup();
+        fs::write(dir.path().join("build.gradle.kts"), "").unwrap();
+        fs::create_dir_all(dir.path().join("src/main/kotlin")).unwrap();
+        assert_eq!(
+            detect(dir.path()),
+            Some(ProjectType::SpringBoot {
+                build_tool: JvmBuildTool::Gradle,
+                language: JvmLanguage::Kotlin,
+            })
+        );
+    }
+
+    #[test]
+    fn detects_spring_boot_gradle_java() {
+        let dir = setup();
+        fs::write(dir.path().join("build.gradle.kts"), "").unwrap();
+        fs::create_dir_all(dir.path().join("src/main/java")).unwrap();
+        assert_eq!(
+            detect(dir.path()),
+            Some(ProjectType::SpringBoot {
+                build_tool: JvmBuildTool::Gradle,
+                language: JvmLanguage::Java,
+            })
+        );
+    }
+
+    #[test]
+    fn detects_spring_boot_maven() {
+        let dir = setup();
+        fs::write(dir.path().join("pom.xml"), "").unwrap();
+        fs::create_dir_all(dir.path().join("src/main/java")).unwrap();
+        assert_eq!(
+            detect(dir.path()),
+            Some(ProjectType::SpringBoot {
+                build_tool: JvmBuildTool::Maven,
+                language: JvmLanguage::Java,
+            })
+        );
     }
 
     #[test]

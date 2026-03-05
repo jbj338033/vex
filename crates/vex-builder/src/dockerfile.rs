@@ -1,4 +1,6 @@
-use crate::detect::{NodeFramework, NodePackageManager, ProjectType, PythonPackageManager};
+use crate::detect::{
+    JvmBuildTool, NodeFramework, NodePackageManager, ProjectType, PythonPackageManager,
+};
 
 pub fn generate(project_type: &ProjectType) -> Option<String> {
     match project_type {
@@ -10,6 +12,7 @@ pub fn generate(project_type: &ProjectType) -> Option<String> {
         ProjectType::Python { package_manager } => Some(generate_python(package_manager)),
         ProjectType::Go => Some(generate_go()),
         ProjectType::Rust => Some(generate_rust()),
+        ProjectType::SpringBoot { build_tool, .. } => Some(generate_spring_boot(build_tool)),
         ProjectType::Static => Some(generate_static()),
     }
 }
@@ -147,6 +150,39 @@ CMD ["/usr/local/bin/app"]
     .to_string()
 }
 
+fn generate_spring_boot(build_tool: &JvmBuildTool) -> String {
+    match build_tool {
+        JvmBuildTool::Gradle => r#"FROM gradle:8-jdk21 AS builder
+WORKDIR /app
+COPY . .
+RUN gradle build -x test --no-daemon
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/build/libs/*.jar app.jar
+ENV PORT=8080
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar", "--server.port=${PORT:-8080}"]
+"#
+        .to_string(),
+        JvmBuildTool::Maven => r#"FROM maven:3-eclipse-temurin-21 AS builder
+WORKDIR /app
+COPY pom.xml .
+RUN mvn dependency:go-offline
+COPY . .
+RUN mvn clean package -DskipTests
+
+FROM eclipse-temurin:21-jre-alpine
+WORKDIR /app
+COPY --from=builder /app/target/*.jar app.jar
+ENV PORT=8080
+EXPOSE 8080
+CMD ["java", "-jar", "app.jar", "--server.port=${PORT:-8080}"]
+"#
+        .to_string(),
+    }
+}
+
 fn generate_static() -> String {
     r#"FROM nginx:alpine
 COPY . /usr/share/nginx/html
@@ -159,6 +195,7 @@ CMD ["nginx", "-g", "daemon off;"]
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::detect::JvmLanguage;
 
     #[test]
     fn dockerfile_project_returns_none() {
@@ -198,6 +235,28 @@ mod tests {
     fn rust_generates_dockerfile() {
         let df = generate(&ProjectType::Rust).unwrap();
         assert!(df.contains("cargo build --release"));
+    }
+
+    #[test]
+    fn generates_spring_boot_gradle() {
+        let df = generate(&ProjectType::SpringBoot {
+            build_tool: JvmBuildTool::Gradle,
+            language: JvmLanguage::Kotlin,
+        })
+        .unwrap();
+        assert!(df.contains("gradle build"));
+        assert!(df.contains("eclipse-temurin:21-jre-alpine"));
+    }
+
+    #[test]
+    fn generates_spring_boot_maven() {
+        let df = generate(&ProjectType::SpringBoot {
+            build_tool: JvmBuildTool::Maven,
+            language: JvmLanguage::Java,
+        })
+        .unwrap();
+        assert!(df.contains("mvn clean package"));
+        assert!(df.contains("eclipse-temurin:21-jre-alpine"));
     }
 
     #[test]
