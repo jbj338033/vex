@@ -23,10 +23,12 @@ pub struct Cli {
 
 #[derive(Subcommand)]
 pub enum Command {
+    #[command(about = "Authenticate with GitHub")]
     Login {
         #[arg(long, default_value_t = default_api_url())]
         url: String,
     },
+    #[command(about = "Deploy an application")]
     Deploy {
         path: Option<String>,
         #[arg(long)]
@@ -34,26 +36,28 @@ pub enum Command {
         #[arg(long)]
         git: Option<String>,
     },
+    #[command(about = "List all apps")]
     List,
-    Deployments {
-        app: String,
-    },
+    #[command(about = "Show deployment history")]
+    Deployments { app: Option<String> },
+    #[command(about = "View application logs")]
     Logs {
-        app: String,
+        app: Option<String>,
         #[arg(short, long)]
         follow: bool,
         #[arg(short, long, default_value = "100")]
         n: u64,
     },
+    #[command(about = "Manage environment variables")]
     Env {
         #[command(subcommand)]
         command: EnvCommand,
     },
-    Status {
-        app: String,
-    },
+    #[command(about = "Show app status")]
+    Status { app: Option<String> },
+    #[command(about = "Delete an application")]
     Destroy {
-        app: String,
+        app: Option<String>,
         #[arg(long)]
         force: bool,
     },
@@ -61,19 +65,31 @@ pub enum Command {
 
 #[derive(Subcommand)]
 pub enum EnvCommand {
-    List {
-        app: String,
-    },
+    #[command(about = "List environment variables")]
+    List { app: Option<String> },
+    #[command(about = "Set environment variables")]
     Set {
-        app: String,
+        app: Option<String>,
         #[arg(required = true, num_args = 1..)]
         vars: Vec<String>,
     },
+    #[command(about = "Unset environment variables")]
     Unset {
-        app: String,
+        app: Option<String>,
         #[arg(required = true, num_args = 1..)]
         keys: Vec<String>,
     },
+}
+
+pub fn resolve_app_name(app: Option<String>) -> Result<String> {
+    if let Some(name) = app {
+        return Ok(name);
+    }
+    let dir = std::env::current_dir()?;
+    dir.file_name()
+        .and_then(|n| n.to_str())
+        .map(String::from)
+        .ok_or_else(|| anyhow::anyhow!("could not determine app name from current directory"))
 }
 
 fn default_api_url() -> String {
@@ -89,10 +105,22 @@ pub async fn run(cli: Cli) -> Result<()> {
         Command::Login { url } => login::run(&url).await,
         Command::Deploy { path, name, git } => deploy::run(path, name, git, cli.format).await,
         Command::List => list::run(cli.format).await,
-        Command::Deployments { app } => deployments::run(&app, cli.format).await,
-        Command::Logs { app, follow, n } => logs::run(&app, follow, n, cli.format).await,
+        Command::Deployments { app } => {
+            let app = resolve_app_name(app)?;
+            deployments::run(&app, cli.format).await
+        }
+        Command::Logs { app, follow, n } => {
+            let app = resolve_app_name(app)?;
+            logs::run(&app, follow, n, cli.format).await
+        }
         Command::Env { command } => env::run(command, cli.format).await,
-        Command::Status { app } => status::run(&app, cli.format).await,
-        Command::Destroy { app, force } => destroy::run(&app, force, cli.format).await,
+        Command::Status { app } => {
+            let app = resolve_app_name(app)?;
+            status::run(&app, cli.format).await
+        }
+        Command::Destroy { app, force } => {
+            let app = resolve_app_name(app)?;
+            destroy::run(&app, force, cli.format).await
+        }
     }
 }

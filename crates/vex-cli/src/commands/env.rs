@@ -3,7 +3,7 @@ use std::io::Write;
 use anyhow::Result;
 use vex_core::schema::{ApiResponse, EnvVarResponse};
 
-use super::EnvCommand;
+use super::{EnvCommand, resolve_app_name};
 use crate::client::Client;
 use crate::config;
 use crate::output::{self, Format, TextDisplay};
@@ -30,11 +30,13 @@ pub async fn run(command: EnvCommand, format: Format) -> Result<()> {
 
     match command {
         EnvCommand::List { app } => {
+            let app = resolve_app_name(app)?;
             let response: ApiResponse<Vec<EnvVarResponse>> =
                 client.get(&format!("/apps/{app}/env")).await?;
             output::print_api(&response, format);
         }
         EnvCommand::Set { app, vars } => {
+            let app = resolve_app_name(app)?;
             let mut map = std::collections::HashMap::new();
             for var in &vars {
                 let (key, value) = var.split_once('=').unwrap_or((var, ""));
@@ -62,6 +64,7 @@ pub async fn run(command: EnvCommand, format: Format) -> Result<()> {
             }
         }
         EnvCommand::Unset { app, keys } => {
+            let app = resolve_app_name(app)?;
             for key in &keys {
                 let response: ApiResponse<()> =
                     client.delete(&format!("/apps/{app}/env/{key}")).await?;
