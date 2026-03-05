@@ -1,4 +1,4 @@
-use anyhow::{Result, bail};
+use anyhow::Result;
 use vex_core::schema::ApiResponse;
 
 use crate::client::Client;
@@ -7,7 +7,8 @@ use crate::output::{self, Format};
 
 pub async fn run(app: &str, force: bool, format: Format) -> Result<()> {
     if !force {
-        bail!("use --force to confirm deletion of app '{app}'");
+        output::error(&format!("use --force to confirm deletion of app '{app}'"));
+        std::process::exit(1);
     }
 
     let cfg = config::load()?;
