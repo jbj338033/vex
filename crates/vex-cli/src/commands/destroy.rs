@@ -14,6 +14,18 @@ pub async fn run(app: &str, force: bool, format: Format) -> Result<()> {
     let client = Client::new(&cfg);
 
     let response: ApiResponse<()> = client.delete(&format!("/apps/{app}")).await?;
-    output::print(&response, format);
+
+    match format {
+        Format::Text => {
+            if let Some(err) = &response.error {
+                output::error(&err.message);
+                std::process::exit(1);
+            }
+            output::success(&format!("App {app} deleted"));
+        }
+        Format::Json => {
+            println!("{}", serde_json::to_string_pretty(&response).unwrap());
+        }
+    }
     Ok(())
 }

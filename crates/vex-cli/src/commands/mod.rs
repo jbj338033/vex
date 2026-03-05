@@ -1,6 +1,8 @@
 mod deploy;
+mod deployments;
 mod destroy;
 mod env;
+mod list;
 mod login;
 mod logs;
 mod status;
@@ -15,7 +17,7 @@ pub struct Cli {
     #[command(subcommand)]
     pub command: Command,
 
-    #[arg(long, global = true, default_value = "json", value_enum)]
+    #[arg(long, global = true, default_value = "text", value_enum)]
     pub format: Format,
 }
 
@@ -31,6 +33,10 @@ pub enum Command {
         name: Option<String>,
         #[arg(long)]
         git: Option<String>,
+    },
+    List,
+    Deployments {
+        app: String,
     },
     Logs {
         app: String,
@@ -82,6 +88,8 @@ pub async fn run(cli: Cli) -> Result<()> {
     match cli.command {
         Command::Login { url } => login::run(&url).await,
         Command::Deploy { path, name, git } => deploy::run(path, name, git, cli.format).await,
+        Command::List => list::run(cli.format).await,
+        Command::Deployments { app } => deployments::run(&app, cli.format).await,
         Command::Logs { app, follow, n } => logs::run(&app, follow, n, cli.format).await,
         Command::Env { command } => env::run(command, cli.format).await,
         Command::Status { app } => status::run(&app, cli.format).await,

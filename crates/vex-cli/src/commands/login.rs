@@ -1,7 +1,9 @@
 use anyhow::{Context, Result, bail};
+use console::style;
 use vex_core::schema::{ApiResponse, AuthResponse, DeviceCodeResponse};
 
 use crate::config::{self, CliConfig};
+use crate::output;
 
 pub async fn run(url: &str) -> Result<()> {
     let base_url = url.trim_end_matches('/');
@@ -18,13 +20,17 @@ pub async fn run(url: &str) -> Result<()> {
 
     let data = resp.data.context("failed to get device code")?;
 
-    eprintln!("Open this URL in your browser: {}", data.verification_uri);
-    eprintln!("Enter code: {}", data.user_code);
+    eprintln!(
+        "  Open this URL: {}",
+        style(&data.verification_uri).underlined()
+    );
+    eprintln!("  Enter code:    {}", style(&data.user_code).bold());
     eprintln!();
 
     let _ = open::that(&data.verification_uri);
 
     let interval = std::time::Duration::from_secs(data.interval.max(5));
+    let sp = output::spinner("Waiting for authentication...");
 
     loop {
         tokio::time::sleep(interval).await;
@@ -48,6 +54,7 @@ pub async fn run(url: &str) -> Result<()> {
             .context("failed to parse token response")?;
 
         if !body.ok {
+            sp.finish_and_clear();
             let err = body
                 .error
                 .map(|e| e.message)
@@ -62,7 +69,8 @@ pub async fn run(url: &str) -> Result<()> {
             server_url: base_url.to_string(),
         })?;
 
-        println!("{{\"ok\": true, \"message\": \"authenticated successfully\"}}");
+        sp.finish_and_clear();
+        output::success("Authenticated successfully");
         return Ok(());
     }
 }

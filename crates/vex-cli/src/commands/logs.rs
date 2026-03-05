@@ -1,9 +1,29 @@
+use std::io::Write;
+
 use anyhow::Result;
+use console::style;
 use vex_core::schema::{ApiResponse, LogEntry};
 
 use crate::client::Client;
 use crate::config;
-use crate::output::{self, Format};
+use crate::output::{self, Format, TextDisplay};
+
+impl TextDisplay for LogEntry {
+    fn fmt_text(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        let ts = style(&self.timestamp).dim();
+        writeln!(w, "{ts}  {}", self.message)?;
+        Ok(())
+    }
+}
+
+impl TextDisplay for Vec<LogEntry> {
+    fn fmt_text(&self, w: &mut dyn Write) -> std::io::Result<()> {
+        for entry in self {
+            entry.fmt_text(w)?;
+        }
+        Ok(())
+    }
+}
 
 pub async fn run(app: &str, follow: bool, n: u64, format: Format) -> Result<()> {
     let cfg = config::load()?;
@@ -34,7 +54,7 @@ pub async fn run(app: &str, follow: bool, n: u64, format: Format) -> Result<()> 
     } else {
         let response: ApiResponse<Vec<LogEntry>> =
             client.get(&format!("/apps/{app}/logs?n={n}")).await?;
-        output::print(&response, format);
+        output::print_api(&response, format);
     }
 
     Ok(())
