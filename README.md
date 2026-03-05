@@ -13,6 +13,34 @@ No web UI — just a CLI and a JSON API. Self-hostable.
 - **Built-in proxy** — host-based reverse proxy included (no Nginx/Traefik needed)
 - **Auto TLS** — per-app certificates via Let's Encrypt HTTP-01 (no DNS provider required)
 
+## Install
+
+### From GitHub Releases
+
+```bash
+# macOS (Apple Silicon)
+curl -fsSL https://github.com/jbj338033/vex/releases/latest/download/vex-darwin-arm64 -o vex
+chmod +x vex && sudo mv vex /usr/local/bin/
+
+# macOS (Intel)
+curl -fsSL https://github.com/jbj338033/vex/releases/latest/download/vex-darwin-amd64 -o vex
+chmod +x vex && sudo mv vex /usr/local/bin/
+
+# Linux (amd64)
+curl -fsSL https://github.com/jbj338033/vex/releases/latest/download/vex-linux-amd64 -o vex
+chmod +x vex && sudo mv vex /usr/local/bin/
+
+# Linux (arm64)
+curl -fsSL https://github.com/jbj338033/vex/releases/latest/download/vex-linux-arm64 -o vex
+chmod +x vex && sudo mv vex /usr/local/bin/
+```
+
+### From source
+
+```bash
+cargo install --git https://github.com/jbj338033/vex vex-cli
+```
+
 ## Quick Start
 
 ### Run the server
